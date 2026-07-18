@@ -1,0 +1,75 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "k8s/**"
+      - ".github/workflows/backend-ci-cd.yml"
+  workflow_dispatch: {}
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: starttech-cluster
+  ECR_REPOSITORY: starttech-backend-api
+
+jobs:
+  build-test-deploy:
+    name: Test, Build, Scan, Push & Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Run Go tests
+        working-directory: backend
+        run: go test ./...
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        working-directory: backend
+        run: |
+          IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.sha_short }}"
+          docker build -t "$IMAGE_URI" .
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+
+      - name: Scan image for vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.IMAGE_URI }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "0" # set to "1" to fail the build on findings once triaged
+
+      - name: Push image to ECR
+        run: docker push "${{ env.IMAGE_URI }}"
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name "${{ env.EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
+
+      - name: Update deployment manifest with new image tag
+        run: |
+          sed -i "s|image: .*|image: ${{ env.IMAGE_URI }}|" k8s/deployment.yaml
+
+      - name: Apply Kubernetes manifests
+        run: kubectl apply -f k8s/
+
+      - name: Verify rollout
+        run: kubectl rollout status deployment/starttech-backend-api --timeout=180s

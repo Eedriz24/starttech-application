@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: starttech-backend-api
+  labels:
+    app: starttech-backend-api
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: starttech-backend-api
+  template:
+    metadata:
+      labels:
+        app: starttech-backend-api
+    spec:
+      containers:
+        - name: backend
+          # Replaced by CI with the ECR image URI + git SHA tag on each deploy.
+          image: PLACEHOLDER_ECR_IMAGE_URI
+          ports:
+            - containerPort: 8080
+          env:
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: starttech-backend-secrets
+                  key: redis-host
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: starttech-backend-secrets
+                  key: mongo-uri
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

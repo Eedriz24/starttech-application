@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: starttech-backend-alb
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    # Tag used by starttech-infra's `data "aws_lb"` lookup to find this ALB.
+    alb.ingress.kubernetes.io/tags: elbv2.k8s.aws/cluster=starttech-cluster
+  labels:
+    app: starttech-backend-api
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: starttech-backend-api
+                port:
+                  number: 80

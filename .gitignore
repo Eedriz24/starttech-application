@@ -1,0 +1,17 @@
+# Node / frontend
+node_modules/
+build/
+dist/
+.env
+.env.local
+
+# Go / backend
+backend/server
+*.exe
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
