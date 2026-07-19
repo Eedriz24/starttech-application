@@ -63,6 +63,14 @@ jobs:
       - name: Update kubeconfig
         run: aws eks update-kubeconfig --name "${{ env.EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
 
+      - name: Debug current AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Debug kubectl context
+        run: |
+          kubectl config current-context
+          kubectl config view --minify
+
       - name: Update deployment manifest with new image tag
         run: |
           sed -i "s|image: .*|image: ${{ env.IMAGE_URI }}|" k8s/deployment.yaml
