@@ -48,7 +48,11 @@ jobs:
           aws s3 sync dist/ "s3://${{ secrets.FRONTEND_S3_BUCKET }}" --delete
 
       - name: Invalidate CloudFront cache
+        env:
+          DIST_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
-          aws cloudfront create-invalidation \
-            --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" \
-            --paths "/*"
+          if [ -z "$DIST_ID" ]; then
+            echo "CLOUDFRONT_DISTRIBUTION_ID not set — skipping invalidation (CDN not deployed yet)."
+          else
+            aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
+          fi
