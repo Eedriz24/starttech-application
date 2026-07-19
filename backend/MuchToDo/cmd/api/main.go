@@ -181,12 +181,6 @@ func setupRouter(db *mongo.Client, cfg config.Config, tokenSvc *auth.TokenServic
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
-	// Alias for automated grading / infra health checks (ALB target group,
-	// k8s readiness & liveness probes) — same logic as /ping above.
-	router.GET("/api/v1/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "pong"})
-	})
-
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Welcome to MuchToDo API"})
 	})
