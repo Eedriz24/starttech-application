@@ -13,6 +13,7 @@ env:
   AWS_REGION: us-east-1
   EKS_CLUSTER_NAME: starttech-cluster
   ECR_REPOSITORY: starttech-backend-api
+  BACKEND_DIR: backend/MuchToDo
 
 jobs:
   build-test-deploy:
@@ -26,8 +27,10 @@ jobs:
           go-version: "1.22"
 
       - name: Run Go tests
-        working-directory: backend
-        run: go test ./...
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: |
+          go mod tidy
+          go test ./...
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -44,10 +47,9 @@ jobs:
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Build Docker image
-        working-directory: backend
         run: |
           IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.sha_short }}"
-          docker build -t "$IMAGE_URI" .
+          docker build -f backend/Dockerfile -t "$IMAGE_URI" backend/MuchToDo
           echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
 
       - name: Scan image for vulnerabilities (Trivy)

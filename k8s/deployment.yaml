@@ -26,25 +26,36 @@ spec:
           ports:
             - containerPort: 8080
           env:
-            - name: REDIS_HOST
+            - name: PORT
+              value: "8080"
+            - name: ENABLE_CACHE
+              value: "true"
+            - name: REDIS_ADDR
               valueFrom:
                 secretKeyRef:
                   name: starttech-backend-secrets
-                  key: redis-host
+                  key: redis-addr
             - name: MONGO_URI
               valueFrom:
                 secretKeyRef:
                   name: starttech-backend-secrets
                   key: mongo-uri
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: starttech-backend-secrets
+                  key: jwt-secret-key
+            - name: ALLOWED_ORIGINS
+              value: "https://YOUR_CLOUDFRONT_DOMAIN"
           readinessProbe:
             httpGet:
-              path: /api/v1/health
+              path: /ping
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /api/v1/health
+              path: /ping
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 15
